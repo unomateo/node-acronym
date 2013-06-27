@@ -8,6 +8,7 @@ var express = require('express')
   , user    = require('./routes/user')
   , http    = require('http')
   , fs      = require('fs')
+  , answers = require('answers')
   , path    = require('path');
 
 var app = express();
@@ -34,11 +35,12 @@ if ('development' == app.get('env')) {
 
 app.get('/', routes.index);
 app.get('/users', user.list);
+app.get('/groups', routes.groups);
+app.get('/add_group', user.list);
 
 var users = [];
 var rounds = null;
-var answers = null;
-var totalUsers = 3;
+var totalUsers = 2;
 
 var io = require('socket.io').listen(app.listen(port));
 
@@ -47,6 +49,7 @@ io.sockets.on('connection', function(socket){
 	console.log('New connection attempt');
 	io.sockets.emit('newUserList', {userList:users});
 
+	// New user has joined
 	socket.on('addUser', function(name){
 	socket.username = name;
 	console.log(name + " has joined");
@@ -55,13 +58,29 @@ io.sockets.on('connection', function(socket){
 		io.sockets.emit('updateUserList', {user:name, connectionType:'add'});
 
 		// if there are 3 people, start the game
-		if(users.length > 2){
-			io.sockets.emit('startGame', {data:"starting Game"});
+		if(users.length >= totalUsers){
+			// make the acronym, eventually this will be randomized
+			var acronym = ['a', 't', 'n'];
+			//make the round object
+			round = {
+				'acronym':acronym,
+				'complete':[]
+			};
+
+			io.sockets.emit('startGame', {message:"starting Game", 'round':round});
 		} else {
 			io.sockets.emit('waitingMessage', {data:"Waiting for " + (totalUsers - users.length).toString() + " more players to join..."});
 		}
-		
+	});
 
+	socket.on("submitAnswer", function(answer){
+		//console.log(data);
+		//Answers.answer.push(data);
+		answers.add(answer);
+		console.log(answers.getCount());
+		if(answers.getCount() >= users.length){
+			io.sockets.emit('startVote', answers.getAnswers());
+		}
 	});
 
 	socket.on('disconnect', function(){
@@ -72,6 +91,4 @@ io.sockets.on('connection', function(socket){
 	});
 });
 
-function getQuestions(){
 
-}

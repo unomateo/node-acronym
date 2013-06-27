@@ -6,19 +6,49 @@
     <link rel='stylesheet' href='/stylesheets/style.css' />
     <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
     <script src='/socket.io/socket.io.js'></script>
+    <script src='functions.js'></script>
     <script>
     	var socket = io.connect('http://localhost:3000');
       var connected = false;
       var username = '';
+      var activeUsers = 0;
+
+      var Answer = {
+
+        'text':{},
+
+        'create':function(form_element){
+            var list = this.text;
+            $(form_element).each(function(i, item){
+              console.log($(item).data('id'));
+              list[$(item).data('id')] = $(item).val();
+            });
+            this.submit();
+        },
+
+        'submit':function(){
+            socket.emit('submitAnswer', {'username':username, data:this.text});
+        },
+
+      };
+
+      
 
       socket.on('connect', function(){
-        // nothing yet...
+        username = getCookie('Quiz');
+        if(username != '' && username != null){
+            connected = true;
+            activeUsers = activeUsers++;
+            socket.emit('addUser', username);
+            //location.replace('/groups');
+        }
       });
 
       // This is sent on initial connection. Used ot get the connected users
       socket.on('newUserList', function(data){
         $(".connectedUsers").html('');
         $.each(data.userList, function(i, user){
+          activeUsers = activeUsers++;
           $(".connectedUsers").append("<div id='"+user+"'>"+user+"</div>");
         });
       });
@@ -27,29 +57,51 @@
       socket.on('updateUserList', function(data){
     
         if(data.connectionType ==  'add'){
+          activeUsers = activeUsers++;
           $(".connectedUsers").append("<div id='"+data.user+"'>"+data.user+"</div>");
         } else {
+          activeUsers = activeUsers--;
           $("#"+data.user).remove();
         }
 
       });
 
+      socket.on('startVote', function(data){
+        console.log(data);
+        $(".show_game").hide();
+        $(".show_waiting").show();
+      });
+
       // waiting for all the players to join
-      socket.on("waitingRoom", function(data){
-        
-      })
+      socket.on("startGame", function(data){
+        //$(".layout").html('');
+        $.each(data.round.acronym, function(i, item){
+            $("#acronym_form").append("<div>" +item + "<input class='acronym_input' data-id='"+item+"' type='text' /></div>");
+        });
+        $("#acronym_form").append("<div><input type='button' class='btn btn-success submit_answer' value='Submit Answer' /></div>");
+        $(".layout").hide();
+        $(".show_game").show().on('click', '.submit_answer', function(){
+          Answer.create(".acronym_input");
+        });
+      });
 
       $(document).ready(function(){
-        $('.layout').html($(".show_index").html()).on('click', 'a',  function(){
+        
+        $('.layout').html($(".show_index").html()).on('click', '.start',  function(){
           var username = prompt("Username please");
           if(username !=''){
             socket.emit('addUser', username);
             connected = true;
+            setCookie('Quiz',username,1);
           } else {
             alert("USERNAME PLEASE!");
           }
         });
       });
+
+      
+
+
 /*
       $('.layout').on('click', 'a',  function(){
           var username = prompt("Username please");
@@ -87,13 +139,14 @@
               <p>
                 Let's see if your gooder then your co-worker at answering random questions with random bogus answers!
               </p>
-              <a href='javascript:;' id='btnJoin' class='btn btn-primary'>Start the Quiz</a>
+              <a href='javascript:;' id='btnJoin' class='btn btn-primary start'>Start the Quiz</a> <a class='btn btn-primary' href='/groups'>Groups</a>
             </div>
             <div class='show_waiting' style='display:none;'>
-              <h2>Waiting</h2>
+              <h2>Waiting for all answers</h2>
             </div>
             <div class='show_game' style='display:none;'>
-              
+              <h2 id='acronym_title'>New Game</h2>
+              <div id='acronym_form'></div>
             </div>
           </div>
         </div>
