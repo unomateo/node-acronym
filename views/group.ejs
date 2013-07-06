@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <title><%= gameName %></title>
+    <link rel='stylesheet' href='/bootstrap/css/bootstrap.css' />
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+    <script src='/socket.io/socket.io.js'></script>
+    <script src='functions.js'></script>
+    <script>
+      var socket = io.connect('http://localhost:3000');
+      	
+      	//joined a game, so show it in the userlist
+      	socket.emit('joinedGame', {gameName:gameName});
+
+      </script>
+  </head>
+  <body>
+    <div class='container-fluid'>
+      <div class='row'>
+        <div class='span4'>
+          <div class='well'>
+            <h3>Players</h3>
+            <div class='connectedUsers'>
+				
+            </div>
+          </div>
+        </div>
+        <div class='span8'>
+          <div class='span12'>
+          	<h1><%= gameName %></h1>
+          </div>
+      </div>
+    </div>
+  </body>
+</html>
