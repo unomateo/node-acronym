@@ -8,41 +8,12 @@
     <script src='/socket.io/socket.io.js'></script>
     <script src='functions.js'></script>
     <script>
-    	var socket = io.connect('http://localhost:3000');
+      var socket = io.connect('http://localhost:3000');
       var connected = false;
       var username = '';
       var activeUsers = 0;
 
-      var Answer = {
-
-        'text':{},
-
-        'create':function(form_element){
-            var list = this.text;
-            $(form_element).each(function(i, item){
-              console.log($(item).data('id'));
-              list[$(item).data('id')] = $(item).val();
-            });
-            this.submit();
-        },
-
-        'submit':function(){
-            socket.emit('submitAnswer', {'username':username, data:this.text});
-        },
-
-      };
-
-      
-
-      socket.on('connect', function(){
-        username = getCookie('Quiz');
-        if(username != '' && username != null){
-            connected = true;
-            activeUsers = activeUsers++;
-            socket.emit('addUser', username);
-            //location.replace('/groups');
-        }
-      });
+      socket.on('connect', function(){});
 
       // This is sent on initial connection. Used ot get the connected users
       socket.on('newUserList', function(data){
@@ -58,70 +29,69 @@
     
         if(data.connectionType ==  'add'){
           activeUsers = activeUsers++;
-          $(".connectedUsers").append("<div id='"+data.user+"'>"+data.user+"</div>");
+          $(".connectedUsers").append("<div id='"+data.user.username+"'>"+data.user.username+"</div>");
         } else {
           activeUsers = activeUsers--;
-          $("#"+data.user).remove();
+          $("#"+data.user.username).remove();
         }
 
       });
 
-      socket.on('startVote', function(data){
-        console.log(data);
-        $(".show_game").hide();
-        $(".show_waiting").show();
-      });
-
-      // waiting for all the players to join
-      socket.on("startGame", function(data){
-        //$(".layout").html('');
-        $.each(data.round.acronym, function(i, item){
-            $("#acronym_form").append("<div>" +item + "<input class='acronym_input' data-id='"+item+"' type='text' /></div>");
-        });
-        $("#acronym_form").append("<div><input type='button' class='btn btn-success submit_answer' value='Submit Answer' /></div>");
-        $(".layout").hide();
-        $(".show_game").show().on('click', '.submit_answer', function(){
-          Answer.create(".acronym_input");
-        });
-      });
 
       $(document).ready(function(){
-        
-        $('.layout').html($(".show_index").html()).on('click', '.start',  function(){
-          var username = prompt("Username please");
-          if(username !=''){
-            socket.emit('addUser', username);
-            connected = true;
-            setCookie('Quiz',username,1);
-          } else {
-            alert("USERNAME PLEASE!");
-          }
-        });
-      });
-
       
+       		username = getCookie('Quiz');
+       		console.log(username);
+	        if(username == '' || username == null){
+	        	show_index();
+	        } else {
+	        	socket.emit('addUser', username);
+	        	show_game_lobbies();
+	        }
+
+      });
+      
+      
+      function show_game_lobbies(){
+      	socket.emit("gameLobbyRequest");
+      	socket.on('gameLobbies', function(data){
+      		
+      		$.each(data.gameLobbies, function(i, lobby){
+      			$('.show_lobbies').append("<p><a href=/group/"+i+" id='"+i+"' class='btn btn-primary'>"+lobby+"</a></p>");
+      		});
+      		
+      		$('.show_lobbies').show();
+      	});
+      	
+      }
+      
+     
+
+      function show_index(){
+      	  $(".show_index").show();
+	      $(".show_index").on('click', '.login',  function(){
+	          var username = prompt("Username please");
+	          if(username !=''){
+	            socket.emit('addUser', username);
+	            connected = true;
+	            setCookie('Quiz',username,1);
+	            
+	            $(".show_index").hide();
+	            show_game_lobbies();
+	            
+	          } else {
+	            alert("USERNAME PLEASE!");
+	          }
+	        });
+       }
 
 
-/*
-      $('.layout').on('click', 'a',  function(){
-          var username = prompt("Username please");
-          if(username !=''){
-            socket.emit('addUser', username);
-            connected = true;
-          } else {
-            alert("USERNAME PLEASE!");
-          }
-        });
-*/
+
     </script>
   </head>
   <body>
     <div class='container-fluid'>
-      <div class='row'>
-        <div class='span12'>
-          <h1>Quiz Node</h1>
-        </div>
-      </div>
+      
       <div class='row'>
         <div class='span4'>
           <div class='well'>
@@ -132,21 +102,16 @@
           </div>
         </div>
         <div class='span8'>
-          <div class='hero-unit'>
-            <div class='layout'></div>
+          <div class='hero-unit'>        
             <div class="show_index" style='display:none;'>
-              <h2>Welcome to Quiz Node</h2>
-              <p>
-                Let's see if your gooder then your co-worker at answering random questions with random bogus answers!
-              </p>
-              <a href='javascript:;' id='btnJoin' class='btn btn-primary start'>Start the Quiz</a> <a class='btn btn-primary' href='/groups'>Groups</a>
+              <h2>Welcome to Achrophobia</h2>
+              <a href='javascript:;' id='btnJoin' class='btn btn-primary login'>Login</a>
             </div>
-            <div class='show_waiting' style='display:none;'>
-              <h2>Waiting for all answers</h2>
-            </div>
-            <div class='show_game' style='display:none;'>
-              <h2 id='acronym_title'>New Game</h2>
-              <div id='acronym_form'></div>
+           
+            <div class="show_lobbies" style='display:none;'>
+              <h2>Game Lobbies</h2>
+              <p>Click the button to join</p>
+              <div id='lobbies_panel'></div>
             </div>
           </div>
         </div>

@@ -7,6 +7,8 @@ exports.index = function(req, res){
   res.render('index', { title: 'Express' });
 };
 
-exports.groups = function(req, res){
-  res.render('groups', { title: 'Groups' });
+exports.group = function(req, res){
+	var id = req.params.id;
+	var groupName = lobbies[id];
+	res.render('group', { gameName: groupName, groupId:id });
 };

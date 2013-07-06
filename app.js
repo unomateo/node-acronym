@@ -23,7 +23,7 @@ app.use(express.favicon());
 app.use(express.logger('dev'));
 app.use(express.bodyParser());
 app.use(express.methodOverride());
-app.use(express.cookieParser('your secret here'));
+app.use(express.cookieParser('D78H87KJANWDJ'));
 app.use(express.session());
 app.use(app.router);
 app.use(express.static(path.join(__dirname, 'public')));
@@ -33,55 +33,54 @@ if ('development' == app.get('env')) {
   app.use(express.errorHandler());
 }
 
-app.get('/', routes.index);
-app.get('/users', user.list);
-app.get('/groups', routes.groups);
-app.get('/add_group', user.list);
-
 var users = [];
 var rounds = null;
 var totalUsers = 2;
+var started = false;
+var lobbies = ['lobby1', 'lobby2'];
+
+app.get('/', routes.index);
+//app.get('/users', user.list);
+app.get('/group/:id', function(req, res){
+	var id = req.params.id;
+	var groupName = lobbies[id];
+	res.render('group', { gameName: groupName, groupId:id });
+});
 
 var io = require('socket.io').listen(app.listen(port));
 
 io.sockets.on('connection', function(socket){
+	
+	socket.join('testRoom');
+	socket.username = 'matt';
+console.log(Object.keys(socket.manager.rooms).length);
 
-	console.log('New connection attempt');
+	socket.on('joinedGame', function(data){
+		user.game = data.gameName;
+		io.sockets.emit('updateUserList', {user:user, connectionType:'add'});
+	});
+	
 	io.sockets.emit('newUserList', {userList:users});
-
+	
 	// New user has joined
 	socket.on('addUser', function(name){
-	socket.username = name;
-	console.log(name + " has joined");
-	users.push(name);
-		// add the new user to the user list
-		io.sockets.emit('updateUserList', {user:name, connectionType:'add'});
-
-		// if there are 3 people, start the game
-		if(users.length >= totalUsers){
-			// make the acronym, eventually this will be randomized
-			var acronym = ['a', 't', 'n'];
-			//make the round object
-			round = {
-				'acronym':acronym,
-				'complete':[]
-			};
-
-			io.sockets.emit('startGame', {message:"starting Game", 'round':round});
-		} else {
-			io.sockets.emit('waitingMessage', {data:"Waiting for " + (totalUsers - users.length).toString() + " more players to join..."});
+		
+		user.username = name;
+		
+		console.log(user.username);
+	
+		socket.username = name;
+		console.log(name + " has joined");
+		if(users.indexOf(name) < 0){
+			users.push(user);
+			io.sockets.emit('updateUserList', {user:users, connectionType:'add'});
 		}
 	});
-
-	socket.on("submitAnswer", function(answer){
-		//console.log(data);
-		//Answers.answer.push(data);
-		answers.add(answer);
-		console.log(answers.getCount());
-		if(answers.getCount() >= users.length){
-			io.sockets.emit('startVote', answers.getAnswers());
-		}
+	
+	socket.on('gameLobbyRequest', function(){
+		socket.emit('gameLobbies', {gameLobbies:lobbies});
 	});
+
 
 	socket.on('disconnect', function(){
 		console.log(socket.username + " has disconnected");
